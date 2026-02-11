@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outbound Caller</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="has-nav">
+    <nav class="main-nav">
+        <div class="nav-container">
+            <h2>Outbound Caller</h2>
+            <div class="nav-buttons">
+                <a href="call-logs.html" class="btn btn-secondary">Call Logs</a>
+                <button id="logoutBtn" class="btn btn-danger">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Outbound Caller</h1>
+
+        <div class="input-group">
+            <label for="phoneNumber">Phone Number</label>
+            <input type="tel" id="phoneNumber" placeholder="+1234567890" autocomplete="tel">
+        </div>
+
+        <div class="button-group">
+            <button id="makeCallBtn" class="btn btn-primary">
+                <span class="btn-icon">📞</span>
+                Make Call
+            </button>
+            <button id="endCallBtn" class="btn btn-danger" disabled>
+                <span class="btn-icon">📴</span>
+                End Call
+            </button>
+        </div>
+
+        <div id="status" class="status-message"></div>
+
+        <div id="callInfo" class="call-info" style="display: none;">
+            <div class="info-item">
+                <strong>Status:</strong>
+                <span id="callStatus" class="status-badge"></span>
+            </div>
+            <div class="info-item" id="durationItem" style="display: none;">
+                <strong>Duration:</strong> <span id="callDuration"></span>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

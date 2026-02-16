@@ -24,12 +24,12 @@ io.on('connection', (socket) =>{
             socket.join(callSid);
          }
       });
-      socket.on('disconnect', ({callSid}) =>{
-          if(callSid){
-            console.log('A user left the call', callSid);
-            socket.leave(callSid);
-          }
-      }) 
+      socket.on('leave-call', ({ callSid }) => {
+        if (callSid) {
+          socket.leave(callSid);
+          console.log('A user left the call', callSid);
+        }
+      });
 })
 
 app.use(cors());

@@ -18,6 +18,10 @@ body.has-nav {
     padding-top: 0;
 }
 
+.display-none {
+    display: none !important;
+}
+
 .container {
     background: white;
     padding: 2rem;

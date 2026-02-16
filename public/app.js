@@ -1,4 +1,6 @@
 // Check authentication on page load
+const Device = Twilio.Device;
+
 document.addEventListener('DOMContentLoaded', () => {
     if (!auth.requireAuth()) {
         return;
@@ -8,9 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('logoutBtn').addEventListener('click', () => {
         auth.logout();
     });
-    
-    initializeDialer();
-     
+
+    initializeDialer();     
+    intitalizeDevice();
+
     socket = io(window.location.origin);
 
     socket.on('call-status', (data) =>{
@@ -31,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("the updated status here is  --- ", callStatus);
             showCallResult({
                 duration: parseInt(data.duration, 10) || 0,
-                status: 'completed'
+                status: callStatus,
             });
             socket.emit('leave-call', { callSid: data.callSid });
             setLoadingState(false);
@@ -49,7 +52,9 @@ const statusMessages = {
   };
 
 let currentCallSid = null;
+let currentUserId = null;
 let socket = null;
+let device = null;
 let phoneNumberInput, makeCallBtn, endCallBtn, statusDiv, callInfoDiv, callStatusSpan, callDurationSpan, durationItem;
 
 function initializeDialer() {
@@ -77,6 +82,47 @@ function initializeDialer() {
     });
 }
 
+async function intitalizeDevice(){
+    try{
+        const tokenResponse = await fetch('/api/getToken',{
+            headers: { 'Content-Type': 'application/json', ...auth.getAuthHeaders() },
+        });
+
+        if(tokenResponse.status === 401){
+            auth.logout();
+            return;
+        }
+        const tokenData = await tokenResponse.json();
+        if(tokenData.success){
+            const token = tokenData.token;
+            if(tokenData.userId != null){
+                currentUserId = tokenData.userId;
+            }
+            // console.log("token for twilio device is ---- ", token);
+            device  = new Device(token);
+            device.on('error', (error) =>{
+                console.error('Device error:', error);
+                showStatus('Error initializing the device');
+            })
+            device.on('registered' , ()=>{
+                console.log('Device registered successfully');
+            })
+
+            device.on("incoming", (call) => {
+                console.log("Incoming call...");
+                call.accept();
+                showStatus('Incoming Call accepted', 'success');
+              });
+            await device.register();
+        }
+        else{
+            throw new Error(tokenData.message || "Failed to get the token");
+        }
+    }
+    catch(error){
+        console.log("Error in intitalizing the dialer", error);
+    }
+}
 const statusColors = {
     completed: '#10b981', 
     failed: '#ef4444',    
@@ -97,8 +143,6 @@ async function makeCall() {
         showStatus('Please enter a phone number', 'error');
         return;
     }
-
-
     const e164Regex = /^\+[1-9]\d{1,14}$/; 
     if (!e164Regex.test(phoneNumber)) {
         showStatus('Invalid format. Use E.164 (e.g., +1234567890)', 'error');
@@ -106,38 +150,34 @@ async function makeCall() {
     }
 
     setLoadingState(true);
-    showStatus('Initiating call...', 'info');
+    // showStatus('Initiating call...', 'info');
     callInfoDiv.style.display = 'none';
 
     try {
-        const response = await fetch('/api/make-call', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...auth.getAuthHeaders() },
-            body: JSON.stringify({ phoneNumber }),
-        });
-
-        if (response.status === 401) {
-            auth.logout();
-            return;
-        }
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to make call');
-        }
-
-        currentCallSid = data.callSid;
-        console.log('currentCallSid-----', currentCallSid);
+        let call = await device.connect({
+            params: {
+              phoneNumber: phoneNumber,
+              userId: currentUserId != null ? String(currentUserId) : undefined
+            }
+          });
+          showStatus('Call initiated successfully!', 'success');
+          console.log('twilio device sdk call object here gives -- ', call);
+        
+          call.on('ringing', () =>{
+           console.log('call is ringing-----');
+           currentCallSid = call.parameters.CallSid;
+           console.log('currentCallSid-----', currentCallSid);
         if(socket){
             console.log('joining call-----', currentCallSid);
             socket.emit('join-call', {callSid: currentCallSid});
         }
-        showStatus('Call initiated successfully!', 'success');
+         showStatus('Call initiated successfully!', 'success');
+         endCallBtn.disabled = false;
+       })
 
     } catch (error) {
         console.error('Error making call:', error);
-        showStatus(error.message, 'error');
+        showStatus(error.message, 'error: please reload to try again');
         setLoadingState(false);
     }
 }
@@ -169,14 +209,9 @@ async function endCall() {
             throw new Error(data.error || 'Failed to end call');
         }
 
-        showStatus('Call ended', 'success');
-        showCallResult(data);
-
-        currentCallSid = null;
+        showStatus('Call Cancelled', 'success');
+        // currentCallSid = null;
         setLoadingState(false);
-        if(socket){
-            socket.emit('leave-call', {callSid: data.callSid});
-        }
 
     } catch (error) {
         console.error('Error ending call:', error);
@@ -211,7 +246,7 @@ function hideStatus() {
 function setLoadingState(isCalling) {
     if (isCalling) {
         makeCallBtn.disabled = true;
-        endCallBtn.disabled = false;
+        endCallBtn.disabled = true;
         phoneNumberInput.disabled = true;
     } else {
         makeCallBtn.disabled = false;

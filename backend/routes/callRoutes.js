@@ -5,8 +5,9 @@ const {getCallLogs, deleteCallLog} = require('../controllers/callLogController')
 const {login, signup} = require('../controllers/authController');
 const {getCallStatus} = require('../controllers/callStatusController');
 const authenticateToken = require('../middleware/authMiddleWare'); 
-const { agentJoin, callEvents } = require('../controllers/voiceController');
+const { agentJoin, childJoinConference, dialAction } = require('../controllers/voiceController');
 const {getToken} =  require('../controllers/tokenController');
+const {holdCall, unholdCall} = require('../controllers/holdController');
 router.post('/login', login);
  
 router.post('/signup', signup);
@@ -23,6 +24,12 @@ router.get('/getToken', authenticateToken, getToken);
 
 router.post('/agent-join', agentJoin);
 
-router.post('/call-events', callEvents);
+router.post('/call-events', childJoinConference);
+
+router.post('/dial-action', dialAction);
+
+router.post('/hold-call', authenticateToken, holdCall);
+
+router.post('/unhold-call', authenticateToken, unholdCall);
 
 module.exports = router;

@@ -13,7 +13,7 @@ const getToken = async (req, res) => {
 
         const voiceGrant = new VoiceGrant({
             outgoingApplicationSid: outgoingApplicationSid,
-            incomingAllow: true, // Optional: add to allow incoming calls
+            incomingAllow: true, 
           });
 
         const token = new AccessToken(

@@ -18,14 +18,16 @@ const getCallStatus = async (req, res) => {
       console.error('Call status webhook: invalid Twilio signature');
       return res.status(403).send('Forbidden');
     }
-    console.log('call status webhook received-----', req.body);
     const { ParentCallSid, CallSid, CallStatus, CallDuration } = req.body;
+
     const userId = req.params.userId;
+
     const callSidForRoom = ParentCallSid || CallSid;
+    
     if (!callSidForRoom) {
       return res.status(200).send('OK');
     }
-   
+
     const io = req.app.get('io');
     if (io && callSidForRoom) {
       io.to(callSidForRoom).emit('call-status', {
@@ -33,31 +35,29 @@ const getCallStatus = async (req, res) => {
         callStatus: CallStatus || '',
         duration: CallDuration || 0,
       });
-      console.log(`Emitting call status to ${callSidForRoom}: ${CallStatus}`);
     }
-    // await updateCallLogByCallSid(callSidForRoom, callLogData);
-    if(userId){
-        if((CallStatus || '').toLowerCase() === 'initiated'){
-            const callLogData = {
-                callSid: callSidForRoom,
-                fromNumber: req.body.From || process.env.TWILIO_PHONE_NUMBER,
-                toNumber: req.body.To || '',
-                call_Status: CallStatus,
-                duration: CallDuration || 0,
-            }
-            await saveCallLog(userId, callLogData);
-        }
-        else{
-            const callLogData = {
-                callSid: callSidForRoom,
-                call_Status: CallStatus,
-                duration: CallDuration || 0,
-            }
-            await updateCallLog(userId, callLogData);
-        }
-    }
-    return res.status(200).send('OK');
 
+    if (userId) {
+      if ((CallStatus || '').toLowerCase() === 'initiated') {
+        const callLogData = {
+          callSid: callSidForRoom,
+          fromNumber: req.body.From || process.env.TWILIO_PHONE_NUMBER,
+          toNumber: req.body.To || '',
+          call_Status: CallStatus,
+          duration: CallDuration || 0,
+        };
+        await saveCallLog(userId, callLogData);
+      } else {
+        const callLogData = {
+          callSid: callSidForRoom,
+          call_Status: CallStatus,
+          duration: CallDuration || 0,
+        };
+        await updateCallLog(userId, callLogData);
+      }
+    }
+
+    return res.status(200).send('OK');
   } catch (error) {
     console.error('Error processing webhook:', error);
     return res.status(200).send('OK');

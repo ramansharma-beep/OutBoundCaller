@@ -17,17 +17,14 @@ const io = new Server(server, {
 app.set('io', io);
 
 io.on('connection', (socket) =>{
-    // console.log('A user connected');
       socket.on('join-call', ({callSid}) =>{
         if(callSid){
-          console.log('A user joined the call', callSid);
             socket.join(callSid);
          }
       });
       socket.on('leave-call', ({ callSid }) => {
         if (callSid) {
           socket.leave(callSid);
-          console.log('A user left the call', callSid);
         }
       });
 })

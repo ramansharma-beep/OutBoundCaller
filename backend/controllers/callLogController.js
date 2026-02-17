@@ -3,15 +3,11 @@ const pool = require('../config/dbConfig');
 const getCallLogs = async (req, res) => {   
     try{
         const {userId} = req.user;
-        // const limit = 50;
-        // const offset = 0;
-        console.log(" fetching call logs for the user", userId);
         const [logs] = await pool.execute(
             `SELECT id, call_sid, from_number, to_number, status, duration, created_at FROM call_logs WHERE user_id = ? AND is_deleted = FALSE ORDER BY created_at DESC`,
             [userId]
           );
-          console.log("logs---- ",logs);
-          //LIMIT ${limitInt} OFFSET ${offsetInt} maybe later 
+          
         return res.status(200).json({
             success: true,
             message: "Call logs fetched successfully",

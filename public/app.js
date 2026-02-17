@@ -18,27 +18,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.on('call-status', (data) =>{
         console.log('emitted events recieved');
-
         console.log('Call status received frontend : ', data);
 
         if(data.callSid !== currentCallSid){
              return;
         }
         const callStatus = ( data.callStatus || '' ).toLowerCase();
-        console.log("callStatus here is -- ",callStatus);
         const message = statusMessages[callStatus] || callStatus;
-        console.log("message here is -- ",message);
         showStatus(message);
 
-        if( callStatus == "completed" || callStatus == "busy" || callStatus == "no-answer"){
-            console.log("the updated status here is  --- ", callStatus);
+        if (callStatus === 'in-progress') {
+            if (holdCallBtn) {
+                holdCallBtn.disabled = false;
+                holdCallBtn.classList.remove('display-none');
+            }
+        }
+
+        if (callStatus === 'completed' || callStatus === 'busy' || callStatus === 'no-answer') {
             showCallResult({
                 duration: parseInt(data.duration, 10) || 0,
                 status: callStatus,
             });
+            if (holdCallBtn) {
+                holdCallBtn.classList.add('display-none');
+                holdCallBtn.disabled = true;
+            }
             socket.emit('leave-call', { callSid: data.callSid });
             setLoadingState(false);
             currentCallSid = null;
+            isOnHold = false;
         }
         
     });
@@ -48,6 +56,7 @@ const statusMessages = {
     "initiated": 'Call initiated',
     "ringing": 'Ringing…',
     "in-progress": 'In progress',
+    "hold": 'Call on hold',
     "completed" : 'Call completed'
   };
 
@@ -55,6 +64,8 @@ let currentCallSid = null;
 let currentUserId = null;
 let socket = null;
 let device = null;
+let holdCallBtn = null;
+let isOnHold = false;
 let phoneNumberInput, makeCallBtn, endCallBtn, statusDiv, callInfoDiv, callStatusSpan, callDurationSpan, durationItem;
 
 function initializeDialer() {
@@ -66,9 +77,10 @@ function initializeDialer() {
     callStatusSpan = document.getElementById('callStatus');
     callDurationSpan = document.getElementById('callDuration');
     durationItem = document.getElementById('durationItem');
-    
+    holdCallBtn = document.getElementById('holdCallBtn');
     makeCallBtn.addEventListener('click', makeCall);
     endCallBtn.addEventListener('click', endCall);
+    holdCallBtn.addEventListener('click', holdCall);
     phoneNumberInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             makeCall();
@@ -98,7 +110,7 @@ async function intitalizeDevice(){
             if(tokenData.userId != null){
                 currentUserId = tokenData.userId;
             }
-            // console.log("token for twilio device is ---- ", token);
+
             device  = new Device(token);
             device.on('error', (error) =>{
                 console.error('Device error:', error);
@@ -109,7 +121,6 @@ async function intitalizeDevice(){
             })
 
             device.on("incoming", (call) => {
-                console.log("Incoming call...");
                 call.accept();
                 showStatus('Incoming Call accepted', 'success');
               });
@@ -120,7 +131,7 @@ async function intitalizeDevice(){
         }
     }
     catch(error){
-        console.log("Error in intitalizing the dialer", error);
+        console.error("Error initializing the dialer", error);
     }
 }
 const statusColors = {
@@ -150,7 +161,6 @@ async function makeCall() {
     }
 
     setLoadingState(true);
-    // showStatus('Initiating call...', 'info');
     callInfoDiv.style.display = 'none';
 
     try {
@@ -161,16 +171,12 @@ async function makeCall() {
             }
           });
           showStatus('Call initiated successfully!', 'success');
-          console.log('twilio device sdk call object here gives -- ', call);
-        
+
           call.on('ringing', () =>{
-           console.log('call is ringing-----');
            currentCallSid = call.parameters.CallSid;
-           console.log('currentCallSid-----', currentCallSid);
-        if(socket){
-            console.log('joining call-----', currentCallSid);
+           if(socket){
             socket.emit('join-call', {callSid: currentCallSid});
-        }
+             }
          showStatus('Call initiated successfully!', 'success');
          endCallBtn.disabled = false;
        })
@@ -181,7 +187,48 @@ async function makeCall() {
         setLoadingState(false);
     }
 }
-
+async function holdCall() {
+    if (!currentCallSid) {
+        showStatus('No active call to hold', 'error');
+        return;
+    }
+    if (!holdCallBtn) return;
+    holdCallBtn.disabled = true;
+    try {
+        if (isOnHold) {
+            const response = await fetch('/api/unhold-call', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...auth.getAuthHeaders() },
+                body: JSON.stringify({ parentCallSid: currentCallSid }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.message || data.error || 'Unhold failed');
+            }
+            isOnHold = false;
+            holdCallBtn.innerHTML = '<span class="btn-icon">⏸</span> Hold';
+            showStatus('In-progress', 'success');
+        } else {
+            const response = await fetch('/api/hold-call', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...auth.getAuthHeaders() },
+                body: JSON.stringify({ parentCallSid: currentCallSid }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.message || data.error || 'Hold failed');
+            }
+            isOnHold = true;
+            holdCallBtn.innerHTML = '<span class="btn-icon">▶</span> Unhold';
+            showStatus('Call on hold', 'success');
+        }
+    } catch (error) {
+        console.error('Error holding call:', error);
+        showStatus(error.message || 'Hold failed', 'error');
+    } finally {
+        if (holdCallBtn) holdCallBtn.disabled = false;
+    }
+}
 async function endCall() {
     if (!currentCallSid) {
         showStatus('No active call to end', 'error');
@@ -190,7 +237,6 @@ async function endCall() {
 
     endCallBtn.disabled = true;
     showStatus('Ending call...', 'info');
-
     try {
         const response = await fetch('/api/end-call', {
             method: 'POST',

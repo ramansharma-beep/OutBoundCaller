@@ -17,15 +17,10 @@ const endCall = async (req, res) => {
         error: 'Twilio credentials not configured. Please check your .env file.'
       });
     }
-   
-    try {
-      const res = await client.calls(callSid).update({ status: 'completed' });
-      console.log('call update response-----', res);
-    }
-    catch (error) {
-      console.log(`Note: Could not update call status for ${callSid} (likely already ended)`);
-    }
-    
+
+       await client.calls(callSid).update({ status: 'completed' });
+      // console.log('call update response-----', res);
+
     return res.status(200).json({
       success: true,
       message: 'Call ended successfully',

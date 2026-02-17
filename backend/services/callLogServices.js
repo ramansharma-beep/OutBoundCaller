@@ -13,18 +13,34 @@ const saveCallLog = async (userId, callLogData) => {
     }
 }
 const updateCallLog = async (userId, callLogData) => {
-    const {callSid, call_Status, duration} = callLogData;
-    try{
-        const [result] = await pool.execute('UPDATE call_logs SET status = ?, duration = ? WHERE user_id = ? AND call_sid = ?', [call_Status, duration, userId, callSid]);
-        return result.affectedRows;
-    }
-    catch(error){
-        throw error;
-    }
+  const { callSid, call_Status, duration } = callLogData;
+  try {
+    const [result] = await pool.execute(
+      'UPDATE call_logs SET status = ?, duration = ? WHERE user_id = ? AND call_sid = ?',
+      [call_Status, duration, userId, callSid]
+    );
+    return result.affectedRows;
+  } catch (error) {
+    throw error;
+  }
+};
 
-}
+
+const updateCallLogByCallSid = async (callSid, callLogData) => {
+  const { call_Status, duration } = callLogData;
+  try {
+    const [result] = await pool.execute(
+      'UPDATE call_logs SET status = ?, duration = ? WHERE call_sid = ?',
+      [call_Status, duration, callSid]
+    );
+    return result.affectedRows;
+  } catch (error) {
+    throw error;
+  }
+};
 
 module.exports = {
-    saveCallLog,
-    updateCallLog,
-}
+  saveCallLog,
+  updateCallLog,
+  updateCallLogByCallSid,
+};

@@ -5,7 +5,7 @@ const cors = require('cors');
 const app = express(); 
 const http = require('http');
 const {Server} = require('socket.io');
-
+const {connectRedis} = require('./config/redisConfig');
 const server = http.createServer(app);
 
 const PORT = process.env.PORT || 3000;
@@ -43,9 +43,12 @@ const callRoutes = require('./routes/callRoutes');
 
 app.use('/api', callRoutes);
 
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log('Make sure to configure your .env file with Twilio credentials');
-});
+(async () => {
+  await connectRedis();
+  server.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    console.log('Make sure to configure your .env file with Twilio credentials');
+  });
+})();
 
 

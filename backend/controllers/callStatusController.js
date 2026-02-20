@@ -1,6 +1,5 @@
 const twilio = require('twilio');
 const { updateCallLog, saveCallLog } = require('../services/callLogServices');
-
 function validateTwilioSignature(req) {
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   if (!authToken) return false;

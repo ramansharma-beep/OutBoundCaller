@@ -54,7 +54,7 @@ const holdCall = async (req, res) => {
         await client.calls(childCallSid).update({
             url: `${process.env.PUBLIC_WEBHOOK_URL}/api/call-events?conferenceName=${parentCallSid}`
         });
-        await new Promise((r) => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, 600));
         const conferencesAfter = await client.conferences.list({
             friendlyName: parentCallSid,
             status: 'in-progress',
